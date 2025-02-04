@@ -1,33 +1,39 @@
 import argparse
 import os
+import sys
 
 import cv2
 import numpy as np
 import yaml
 
+folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if folder not in sys.path:
+    sys.path.insert(1, folder)
+
 from gs_sdk.gs_device import Camera
-from calibration.utils import load_csv_as_dict
+from utils import load_csv_as_dict
 
 """
-This script collects tactile data using ball indenters for sensor calibration.
+This script collects tactile data using indenters for sensor calibration.
 
 Instruction: 
     1. Connect the sensor to the computer.
-    2. Prepare a ball indenter with known diameter.
-    3. Runs this script, press 'b' to collect a background image.
-    4. Press the sensor with the ball indenter at multiple locations (~50 locations preferred),
+    2. Prepare an indenter with known width and height.
+    3. Run this script, press 'b' to collect a background image.
+    4. Press the sensor with the indenter at multiple locations (~50 locations preferred),
        press 'w' to save the tactile image. When done, press 'q' to quit.
 Note:
-    If you have prepared multiple balls in different diameters, you can run this script multiple
-    times, assign the same calib_dir but different ball diameters, the system will treat it as 
+    If you have prepared multiple indenters with different dimensions, you can run this script multiple
+    times, assign the same calib_dir but different indenter dimensions, and the system will treat it as 
     one single dataset.
 
 Usage:
-    python collect_data.py --calib_dir CALIB_DIR --ball_diameter DIAMETER [--config_path CONFIG_PATH]
+    python collect_data.py --calib_dir CALIB_DIR --indenter_width WIDTH --indenter_height HEIGHT [--config_path CONFIG_PATH]
 
 Arguments:
     --calib_dir: Path to the directory where the collected data will be saved
-    --ball_diameter: Diameter of the ball indenter in mm
+    --indenter_width: Width of the indenter in mm
+    --indenter_height: Height of the indenter in mm
     --config_path: (Optional) Path to the configuration file about the sensor dimensions.
                    If not provided, GelSight Mini is assumed.
 """
@@ -38,7 +44,7 @@ config_dir = os.path.join(os.path.dirname(__file__), "../examples/configs")
 def collect_data():
     # Argument Parsers
     parser = argparse.ArgumentParser(
-        description="Collect calibration data with ball indenters to calibrate the sensor."
+        description="Collect calibration data with indenters to calibrate the sensor."
     )
     parser.add_argument(
         "-b",
@@ -47,7 +53,10 @@ def collect_data():
         help="path to save calibration data",
     )
     parser.add_argument(
-        "-d", "--ball_diameter", type=float, help="diameter of the indenter in mm"
+        "--indenter_width", type=float, help="width of the indenter in mm", required=True
+    )
+    parser.add_argument(
+        "--indenter_height", type=float, help="height of the indenter in mm", required=True
     )
     parser.add_argument(
         "-c",
@@ -60,8 +69,10 @@ def collect_data():
 
     # Create the data saving directories
     calib_dir = args.calib_dir
-    ball_diameter = args.ball_diameter
-    indenter_subdir = "%.3fmm" % (ball_diameter)
+    indenter_width = args.indenter_width
+    indenter_height = args.indenter_height
+    # Create a subdirectory name using both dimensions, e.g., "10.000x20.000mm"
+    indenter_subdir = "{:.3f}x{:.3f}mm".format(indenter_width, indenter_height)
     indenter_dir = os.path.join(calib_dir, indenter_subdir)
     if not os.path.isdir(indenter_dir):
         os.makedirs(indenter_dir)
@@ -74,23 +85,28 @@ def collect_data():
         imgh = config["imgh"]
         imgw = config["imgw"]
 
-    # Create the data saving catalog
+    # Create the data saving catalog with headers for width and height
     catalog_path = os.path.join(calib_dir, "catalog.csv")
     if not os.path.isfile(catalog_path):
         with open(catalog_path, "w") as f:
-            f.write("experiment_reldir,diameter(mm)\n")
+            f.write("experiment_reldir,indenter_width(mm),indenter_height(mm)\n")
 
-    # Find last data_count collected with this diameter
+    # Find last data_count collected with these indenter dimensions
     data_dict = load_csv_as_dict(catalog_path)
-    diameters = np.array([float(diameter) for diameter in data_dict["diameter(mm)"]])
-    data_idxs = np.where(np.abs(diameters - ball_diameter) < 1e-3)[0]
-    data_counts = np.array(
-        [int(os.path.basename(reldir)) for reldir in data_dict["experiment_reldir"]]
-    )
-    if len(data_idxs) == 0:
-        data_count = 0
+    if "indenter_width(mm)" in data_dict and "indenter_height(mm)" in data_dict:
+        widths = np.array([float(x) for x in data_dict["indenter_width(mm)"]])
+        heights = np.array([float(x) for x in data_dict["indenter_height(mm)"]])
+        data_idxs = np.where((np.abs(widths - indenter_width) < 1e-3) &
+                             (np.abs(heights - indenter_height) < 1e-3))[0]
+        data_counts = np.array(
+            [int(os.path.basename(reldir)) for reldir in data_dict["experiment_reldir"]]
+        )
+        if len(data_idxs) == 0:
+            data_count = 0
+        else:
+            data_count = max(data_counts[data_idxs]) + 1
     else:
-        data_count = max(data_counts[data_idxs]) + 1
+        data_count = 0
 
     # Connect to the device and collect data until quit
     device = Camera(device_name, imgh, imgw)
@@ -110,12 +126,11 @@ def collect_data():
                 os.makedirs(experiment_dir)
             save_path = os.path.join(experiment_dir, "gelsight.png")
             cv2.imwrite(save_path, image)
-            print("Save data to new path: %s" % save_path)
+            print("Saved data to new path: %s" % save_path)
 
-            # Save to catalog
+            # Save to catalog with both dimensions
             with open(catalog_path, "a") as f:
-                f.write(experiment_reldir + "," + str(ball_diameter))
-                f.write("\n")
+                f.write("{},{:.3f},{:.3f}\n".format(experiment_reldir, indenter_width, indenter_height))
             data_count += 1
         elif key == ord("b"):
             print("Collecting 10 background images, please wait ...")
@@ -129,7 +144,7 @@ def collect_data():
             # Save the background image
             save_path = os.path.join(calib_dir, "background.png")
             cv2.imwrite(save_path, image)
-            print("Save background image to %s" % save_path)
+            print("Saved background image to %s" % save_path)
         elif key == ord("q"):
             # Quit
             break
