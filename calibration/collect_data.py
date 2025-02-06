@@ -6,12 +6,9 @@ import cv2
 import numpy as np
 import yaml
 
-folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if folder not in sys.path:
-    sys.path.insert(1, folder)
 
 from gs_sdk.gs_device import Camera
-from utils import load_csv_as_dict
+from calibration.utils import load_csv_as_dict
 
 """
 This script collects tactile data using indenters for sensor calibration.
@@ -28,12 +25,11 @@ Note:
     one single dataset.
 
 Usage:
-    python collect_data.py --calib_dir CALIB_DIR --indenter_width WIDTH --indenter_height HEIGHT [--config_path CONFIG_PATH]
+    python collect_data.py --calib_dir CALIB_DIR --indenter_width WIDTH [--config_path CONFIG_PATH]
 
 Arguments:
     --calib_dir: Path to the directory where the collected data will be saved
     --indenter_width: Width of the indenter in mm
-    --indenter_height: Height of the indenter in mm
     --config_path: (Optional) Path to the configuration file about the sensor dimensions.
                    If not provided, GelSight Mini is assumed.
 """
@@ -56,9 +52,6 @@ def collect_data():
         "--indenter_width", type=float, help="width of the indenter in mm", required=True
     )
     parser.add_argument(
-        "--indenter_height", type=float, help="height of the indenter in mm", required=True
-    )
-    parser.add_argument(
         "-c",
         "--config_path",
         type=str,
@@ -70,9 +63,8 @@ def collect_data():
     # Create the data saving directories
     calib_dir = args.calib_dir
     indenter_width = args.indenter_width
-    indenter_height = args.indenter_height
     # Create a subdirectory name using both dimensions, e.g., "10.000x20.000mm"
-    indenter_subdir = "{:.3f}x{:.3f}mm".format(indenter_width, indenter_height)
+    indenter_subdir = "{:.3f}mm".format(indenter_width)
     indenter_dir = os.path.join(calib_dir, indenter_subdir)
     if not os.path.isdir(indenter_dir):
         os.makedirs(indenter_dir)
@@ -93,20 +85,17 @@ def collect_data():
 
     # Find last data_count collected with these indenter dimensions
     data_dict = load_csv_as_dict(catalog_path)
-    if "indenter_width(mm)" in data_dict and "indenter_height(mm)" in data_dict:
-        widths = np.array([float(x) for x in data_dict["indenter_width(mm)"]])
-        heights = np.array([float(x) for x in data_dict["indenter_height(mm)"]])
-        data_idxs = np.where((np.abs(widths - indenter_width) < 1e-3) &
-                             (np.abs(heights - indenter_height) < 1e-3))[0]
-        data_counts = np.array(
-            [int(os.path.basename(reldir)) for reldir in data_dict["experiment_reldir"]]
-        )
-        if len(data_idxs) == 0:
-            data_count = 0
-        else:
-            data_count = max(data_counts[data_idxs]) + 1
-    else:
+
+    widths = np.array([float(x) for x in data_dict["indenter_width(mm)"]])
+    data_idxs = np.where(np.abs(widths - indenter_width) < 1e-3)[0]
+    data_counts = np.array(
+        [int(os.path.basename(reldir)) for reldir in data_dict["experiment_reldir"]]
+    )
+    if len(data_idxs) == 0:
         data_count = 0
+    else:
+        data_count = max(data_counts[data_idxs]) + 1
+
 
     # Connect to the device and collect data until quit
     device = Camera(device_name, imgh, imgw)
@@ -130,7 +119,7 @@ def collect_data():
 
             # Save to catalog with both dimensions
             with open(catalog_path, "a") as f:
-                f.write("{},{:.3f},{:.3f}\n".format(experiment_reldir, indenter_width, indenter_height))
+                f.write("{},{:.3f}\n".format(experiment_reldir, indenter_width))
             data_count += 1
         elif key == ord("b"):
             print("Collecting 10 background images, please wait ...")
@@ -152,7 +141,7 @@ def collect_data():
             # No key pressed
             continue
         else:
-            print("Unrecognized key %s" % key)
+            print("Unrecognized key.\nPlease use 'w' to save the image, 'b' to save the background or 'q' to quit.")
 
     device.release()
     cv2.destroyAllWindows()

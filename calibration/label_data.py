@@ -9,7 +9,7 @@ from nanogui import Texture
 from nanogui import glfw
 import yaml
 
-from utils import load_csv_as_dict
+from calibration.utils import load_csv_as_dict
 
 """
 Modified Calibration Script:
