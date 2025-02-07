@@ -9,6 +9,8 @@ import yaml
 from calibration.utils import load_csv_as_dict
 from gs_sdk.gs_reconstruct import image2bgrxys
 
+import matplotlib.pyplot as plt
+
 """
 This script prepares dataset for the tactile sensor calibration.
 It is based on the collected and labeled data.
@@ -250,6 +252,8 @@ def prepare_data():
         line_1 = corners[:2]
         line_2 = corners[2:]
         mask = create_rotated_rectangle_mask(image.shape[:2], corners)
+
+        #create depth map
         depth_map = get_depth_map(image.shape[:2], edge, line_1, line_2, depth)
 
         gxangles = np.gradient(depth_map, axis=1)  # Gradient in x-direction
@@ -261,6 +265,25 @@ def prepare_data():
         bgrxys = image2bgrxys(image)
         save_path = os.path.join(experiment_dir, "data.npz")
         np.savez(save_path, bgrxys=bgrxys, gxyangles=gxyangles, mask=mask)
+
+        save_path_depth_img = os.path.join(experiment_dir, "depth_img.png")
+        plt.imshow(depth_map)
+        plt.axis('off')
+        plt.savefig(save_path_depth_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
+        save_path_gradient_x_img = os.path.join(experiment_dir, "grad_x_img.png")
+        plt.imshow(gxangles)
+        plt.axis('off')
+        plt.savefig(save_path_gradient_x_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
+        save_path_gradient_y_img = os.path.join(experiment_dir, "grad_y_img.png")
+        plt.imshow(gyangles)
+        plt.axis('off')
+        plt.savefig(save_path_gradient_y_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
 
     # Save the background data
     bg_path = os.path.join(calib_dir, "background.png")

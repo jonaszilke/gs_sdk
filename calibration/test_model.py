@@ -1,14 +1,9 @@
 import argparse
 import os
-import sys
 
 import cv2
 import numpy as np
 import yaml
-
-folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if folder not in sys.path:
-    sys.path.insert(1, folder)
 
 from gs_sdk.gs_device import Camera
 from gs_sdk.gs_reconstruct import Reconstructor

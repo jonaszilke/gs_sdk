@@ -35,7 +35,7 @@ class Line:
     color_line = (128, 0, 0)
     opacity = 0.5
 
-    def __init__(self, cx, cy, length=100, angle=0.0, move_incr=2, length_incr=2, angle_incr=2):
+    def __init__(self, cx, cy, length=100, angle=0.0, move_incr=2, length_incr=1, angle_incr=1):
         self.center = [cx, cy]
         self.length = length
         self.angle = angle  # in degrees
@@ -193,7 +193,7 @@ class CalibrateApp(ng.Screen):
         p1 = (int(self.line.center[0] - dx), int(self.line.center[1] - dy))
         p2 = (int(self.line.center[0] + dx), int(self.line.center[1] + dy))
         # Draw the line
-        cv2.line(overlay, p1, p2, self.line.color_line, 2)
+        cv2.line(overlay, p1, p2, self.line.color_line, 1)
 
         # Compute perpendicular vector (as float):
         perp = (-np.sin(angle_rad), np.cos(angle_rad))
@@ -206,7 +206,7 @@ class CalibrateApp(ng.Screen):
                 (p2[0] + int(self.width1 * perp[0]), p2[1] + int(self.width1 * perp[1])),
                 (p1[0] + int(self.width1 * perp[0]), p1[1] + int(self.width1 * perp[1]))
             ], dtype=np.int32)
-            cv2.polylines(overlay, [r1], isClosed=True, color=(0, 255, 0), thickness=2)
+            cv2.polylines(overlay, [r1], isClosed=True, color=(0, 255, 0), thickness=1)
         if self.stage >= 2:
             # Compute rectangle 2 (using width2 on the opposite side):
             r2 = np.array([
@@ -215,7 +215,7 @@ class CalibrateApp(ng.Screen):
                 (p2[0] - int(self.width2 * perp[0]), p2[1] - int(self.width2 * perp[1])),
                 (p1[0] - int(self.width2 * perp[0]), p1[1] - int(self.width2 * perp[1]))
             ], dtype=np.int32)
-            cv2.polylines(overlay, [r2], isClosed=True, color=(0, 0, 255), thickness=2)
+            cv2.polylines(overlay, [r2], isClosed=True, color=(0, 0, 255), thickness=1)
 
         cv2.addWeighted(overlay, self.line.opacity, orig_img, 1 - self.line.opacity, 0, overlay)
         return overlay

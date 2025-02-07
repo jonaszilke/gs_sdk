@@ -1,7 +1,6 @@
 import argparse
 import json
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,13 +9,8 @@ from torch import nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from utils import load_csv_as_dict, transfer_weights
-from models import BGRXYDataset, BGRXYMLPNet_
-
-folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if folder not in sys.path:
-    sys.path.insert(1, folder)
-
+from calibration.utils import load_csv_as_dict, transfer_weights
+from calibration.models import BGRXYDataset, BGRXYMLPNet_
 from gs_sdk.gs_reconstruct import BGRXYMLPNet
 
 """
