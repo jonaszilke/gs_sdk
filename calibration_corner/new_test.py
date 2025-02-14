@@ -60,10 +60,6 @@ def plot_cube(vertices, title="3D Rotierter Würfel", plane=None):
     ax.add_collection3d(Poly3DCollection(faces, alpha=0.5,  facecolors='g',edgecolor='k'))
     ax.add_collection3d(Poly3DCollection(plane, alpha=0.5, edgecolor='k'))
 
-    elev = 90
-    azim = 0
-
-    ax.view_init(elev=elev, azim=azim)
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -119,6 +115,8 @@ def plot_cube_zoom_corner(vertices, title="Zoom Corner", plane=None):
     """Plottet den Würfel im 3D-Raum und optional eine Ebene."""
     sorted_vertices, indices = sort_vertices_by_z(vertices)
 
+    lowest_corner = indices[0]
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     vertices2d = copy(vertices)
@@ -127,13 +125,18 @@ def plot_cube_zoom_corner(vertices, title="Zoom Corner", plane=None):
 
     faces2d = [[vertices2d[j] for j in face] for face in
              [(0, 1, 3, 2), (4, 5, 7, 6), (0, 1, 5, 4),
-              (2, 3, 7, 6), (0, 2, 6, 4), (1, 3, 7, 5)]]
+              (2, 3, 7, 6), (0, 2, 6, 4), (1, 3, 7, 5)] if lowest_corner in face]
 
     ax.add_collection3d(Poly3DCollection(faces2d, alpha=0.5, edgecolor='k'))
 
     print(f"smallest corner: {sorted_vertices[0]}")
     x_lim = sorted_vertices[0][0] + 0.1, sorted_vertices[0][0] - 0.1
     y_lim = sorted_vertices[0][1] + 0.1, sorted_vertices[0][1] - 0.1
+
+    elev = 90
+    azim = 0
+
+    ax.view_init(elev=elev, azim=azim)
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
