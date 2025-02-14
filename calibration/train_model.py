@@ -131,6 +131,7 @@ def train_model():
     print("Naive MAE (predict as mean): %.4f" % naive_mae)
     print("without train, Train MAE: %.4f, Test MAE: %.4f" % (train_mae, test_mae))
 
+    best_loss = np.inf
     # Train the model
     for epoch_idx in range(args.n_epochs):
         losses = []
@@ -154,11 +155,16 @@ def train_model():
         )
         scheduler.step()
 
+        if best_loss > traj["test_maes"][-1]:
+            best_loss = traj["test_maes"][-1]
+            save_path_best = os.path.join(model_dir, "nnmodel_best.pth")
+            torch.save(save_net.state_dict(), save_path_best)
+
         # Save model every 10 steps
-        if (epoch_idx + 1) % 10 == 0:
+        if (epoch_idx + 1) % 5 == 0:
             # Transfer weights to MLP Net and save
             transfer_weights(net, save_net)
-            save_path = os.path.join(model_dir, "nnmodel.pth")
+            save_path = os.path.join(model_dir, f"nnmodel_{epoch_idx}.pth")
             torch.save(save_net.state_dict(), save_path)
 
     # Save the training curve

@@ -9,6 +9,8 @@ import yaml
 from calibration.utils import load_csv_as_dict
 from gs_sdk.gs_reconstruct import image2bgrxys
 
+import matplotlib.pyplot as plt
+
 """
 This script prepares dataset for the tactile sensor calibration.
 It is based on the collected and labeled data.
@@ -117,6 +119,24 @@ def prepare_data():
         bgrxys = image2bgrxys(image)
         save_path = os.path.join(experiment_dir, "data.npz")
         np.savez(save_path, bgrxys=bgrxys, gxyangles=gxyangles, mask=mask)
+
+        save_path_depth_img = os.path.join(experiment_dir, "mask_img.png")
+        plt.imshow(mask)
+        plt.axis('off')
+        plt.savefig(save_path_depth_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
+        save_path_gradient_x_img = os.path.join(experiment_dir, "grad_x_img.png")
+        plt.imshow(gxyangles[:, :, 0] )
+        plt.axis('off')
+        plt.savefig(save_path_gradient_x_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
+        save_path_gradient_y_img = os.path.join(experiment_dir, "grad_y_img.png")
+        plt.imshow(gxyangles[:, :, 1] )
+        plt.axis('off')
+        plt.savefig(save_path_gradient_y_img, dpi=300, bbox_inches="tight")
+        plt.close()
 
     # Save the background data
     bg_path = os.path.join(calib_dir, "background.png")

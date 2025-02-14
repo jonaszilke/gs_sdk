@@ -256,8 +256,8 @@ def prepare_data():
         #create depth map
         depth_map = get_depth_map(image.shape[:2], edge, line_1, line_2, depth)
 
-        gxangles = np.gradient(depth_map, axis=1)  # Gradient in x-direction
-        gyangles = np.gradient(depth_map, axis=0)  # Gradient in y-direction
+        gxangles = -np.gradient(depth_map, axis=1)  # Gradient in x-direction
+        gyangles = -np.gradient(depth_map, axis=0)  # Gradient in y-direction
         gxyangles = np.stack([gxangles, gyangles], axis=-1)
         gxyangles[np.logical_not(mask)] = np.array([0.0, 0.0])
 
@@ -272,14 +272,20 @@ def prepare_data():
         plt.savefig(save_path_depth_img, dpi=300, bbox_inches="tight")
         plt.close()
 
+        save_path_depth_img = os.path.join(experiment_dir, "mask_img.png")
+        plt.imshow(mask)
+        plt.axis('off')
+        plt.savefig(save_path_depth_img, dpi=300, bbox_inches="tight")
+        plt.close()
+
         save_path_gradient_x_img = os.path.join(experiment_dir, "grad_x_img.png")
-        plt.imshow(gxangles)
+        plt.imshow(gxyangles[:, :, 0])
         plt.axis('off')
         plt.savefig(save_path_gradient_x_img, dpi=300, bbox_inches="tight")
         plt.close()
 
         save_path_gradient_y_img = os.path.join(experiment_dir, "grad_y_img.png")
-        plt.imshow(gyangles)
+        plt.imshow(gxyangles[:, :, 1])
         plt.axis('off')
         plt.savefig(save_path_gradient_y_img, dpi=300, bbox_inches="tight")
         plt.close()
