@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+from networkx.classes import neighbors
 from scipy.spatial.transform import Rotation as R
 
 matplotlib.use('TkAgg')
@@ -258,9 +259,9 @@ def get_imprint_angle(vertices):
     gamma = calculate_angle(lines[0], lines[2])
 
     x_axis =  np.array([[0, 0], [1,0]])
-    alpha = calculate_angle(lines[0], x_axis)
-    beta = calculate_angle(lines[1], x_axis)
-    gamma = calculate_angle(lines[0], x_axis)
+    # alpha = calculate_angle(lines[0], x_axis)
+    # beta = calculate_angle(lines[1], x_axis)
+    # gamma = calculate_angle(lines[2], x_axis)
     return alpha, beta, gamma
 
 
@@ -309,9 +310,11 @@ def are_cube_rotations_equivalent(euler1, euler2, degrees=True, tol=1e-2):
             return True  # Found an equivalent rotation
     return False
 
-def objective_function(rotation_angles, imprint_angles):
+def objective_function(rotation_angles, imprint_angles, vectors):
     rx, ry, rz = rotation_angles
     rotated_vertices = rotated_cube_vertices(rx, ry, rz)
+
+    calc_vectors = get_corner_vectors(rotated_vertices)
     #print(f"Rotation Angles: {rx}, {ry}, {rz}")
     z_height = get_plane_between_corners(rotated_vertices)
     lines = get_imprint_lines(rotated_vertices, z_height)
@@ -327,21 +330,45 @@ def objective_function(rotation_angles, imprint_angles):
     error_b = np.linalg.norm(imprint_beta - b)
     error_g = np.linalg.norm(imprint_gamma - g)
 
+    error_vec = 0
+
+    for i in range(len(vectors)):
+        error_vec += (calc_vectors[i] - vectors[i])**2
+
     #print(f"Errors: {error_a}, {error_b}, {error_g}")
 
-    return error_a + error_b + error_g
+    return error_a + error_b + error_g + error_vec
 
-def find_cube_rotation(imprint_angles):
+def find_cube_rotation(imprint_angles, vectors):
     from scipy.optimize import minimize
 
     """Findet die optimalen Rotationswinkel für den Würfel."""
     initial_guess = np.array([1, 1, 1])  # Startwerte für die Winkel
-    result = minimize(objective_function, initial_guess, args=(imprint_angles,), method='Nelder-Mead')
+    result = minimize(objective_function, initial_guess, args=(imprint_angles, vectors,), method='Nelder-Mead')
     return result.x
 
 
 def get_point_of_interest(vertices):
-    pass
+    sorted_vertices, indices = sort_vertices_by_z(vertices)
+    lowest_corner = indices[0]
+
+    edges = np.array([np.array(e) for e in cube_edges if lowest_corner in e]).flatten()
+    edges = np.delete(edges, np.argwhere(edges == lowest_corner))
+    vertices2d = vertices[:, :2]
+    center = vertices2d[lowest_corner]
+    neighbor = [vertices2d[i] for i in edges]
+    return center, neighbor
+
+def get_corner_vectors(vertices):
+    center, neighbor = get_point_of_interest(vertices)
+    vectors = 0
+    for n in neighbor:
+        v = n - center
+        norm = np.linalg.norm(v)
+        vectors += v / norm if norm != 0 else v
+    return vectors
+
+
 # Setze eine zufällige Rotation
 true_alpha, true_beta, true_gamma = np.array([-45, 35.264, 0])
 true_alpha_2, true_beta_2, true_gamma_2 = np.array([45.  ,  35.26 ,-52.48])
@@ -354,8 +381,9 @@ print(f"are rotations equivalent: {equivialent}")
 z_height = get_plane_between_corners(rotated_vertices)
 equation_plane = get_plane_vertices(z_height)
 imprint_angles = get_imprint_angle(rotated_vertices)
+rotated_vectors = get_corner_vectors(rotated_vertices)
 print(f"imprint angles: {imprint_angles}")
-calc_angles = np.round(find_cube_rotation(imprint_angles), 2)
+calc_angles = np.round(find_cube_rotation(imprint_angles, rotated_vectors), 2)
 np.set_printoptions(suppress=True)
 print(f"Calculated Angles: {calc_angles}")
 calc_alpha, calc_beta, calc_gamma = np.array(calc_angles)
